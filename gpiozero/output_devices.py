@@ -93,6 +93,7 @@ class OutputDevice(SourceMixin, GPIODevice):
         """
         Turns the device on.
         """
+        print("LOG: LED allumée")
         self._write(True)
 
     def off(self):
