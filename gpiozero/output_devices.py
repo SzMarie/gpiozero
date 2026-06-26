@@ -83,7 +83,6 @@ class OutputDevice(SourceMixin, GPIODevice):
         return bool(self._active_state if value else self._inactive_state)
 
     def _write(self, value):
-        print(f"LOG: _write appelé avec value={value}", flush=True)
         try:
             self.pin.state = self._value_to_state(value)
         except AttributeError:
@@ -94,7 +93,6 @@ class OutputDevice(SourceMixin, GPIODevice):
         """
         Turns the device on.
         """
-        print("LOG: LED allumée", flush=True)
         self._write(True)
 
     def off(self):
