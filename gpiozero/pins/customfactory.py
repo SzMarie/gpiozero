@@ -1,5 +1,5 @@
 from .lgpio import LGPIOFactory
-from megaind 
+import megaind 
 from multiio import SMmultiio
 
 class SequentRelay():
