@@ -14,6 +14,7 @@ from time import sleep, monotonic
 from threading import Thread, Event
 from math import isclose
 from multiio import SMmultiio
+import time 
 
 # NOTE: Remove try when compatibility moves beyond Python 3.10
 try:
@@ -80,6 +81,7 @@ class SequentPin(PiPin):
         assert 0 <= value <= 1
         self._change_state(bool(value))
         self.card.set_relay(self._channel, 1 if value else 0) #envoie a la carte
+        time.sleep(0.05) #laisse le temps pour communication I2C
 
     def _change_state(self, value):
         if self._state != value:
