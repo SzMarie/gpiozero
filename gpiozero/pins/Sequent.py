@@ -177,6 +177,7 @@ class MegaindPin(MultiIOPin):
     def __init__(self, factory, info, stack=0, channel=1):
         super().__init__(factory, info, stack, channel)
         self.card = megaind 
+        self._stack = stack
 
     def _set_state(self, value):
         if self._function == 'input':
