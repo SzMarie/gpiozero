@@ -14,6 +14,7 @@ from time import sleep, monotonic
 from threading import Thread, Event
 from math import isclose
 from multiio import SMmultiio
+import megaind
 import time 
 
 # NOTE: Remove try when compatibility moves beyond Python 3.10
@@ -35,12 +36,12 @@ from ..devices import Device
 from ..mixins import SharedMixin
 from .pi import PiPin, PiFactory
 from .spi import SPISoftware
-
+se
 
 PinState = namedtuple('PinState', ('timestamp', 'state'))
 
 
-class SequentPin(PiPin):
+class MultiIOPin(PiPin):
     """
     A mock pin used primarily for testing. This class does *not* support PWM.
     """
@@ -173,10 +174,23 @@ class SequentPin(PiPin):
             assert isclose(actual.timestamp, expected[0], rel_tol=0.05, abs_tol=0.05)
             assert isclose(actual.state, expected[1])
 
+class MegaindPin(MultiIOPin):
+    def __init__(self, factory, info, stack=0, channel=1):
+        super().__init__(factory, info, stack, channel)
+        self.card = megaind 
 
-class MockConnectedPin(SequentPin):
+    def _set_state(self, value):
+        if self._function == 'input':
+            raise PinSetInput(f'cannot set state of pin {self!r}')
+        assert self._function == 'output'
+        assert 0 <= value <= 1
+        self._change_state(bool(value))
+        megaind.setOd(self._stack, self._channel, 1 if value else 0)
+        time.sleep(0.05)
+
+class MockConnectedPin(MultiIOPin):
     """
-    This derivative of :class:`SequentPin` emulates a pin connected to another
+    This derivative of :class:`MultiIOPin` emulates a pin connected to another
     mock pin. This is used in the "real pins" portion of the test suite to
     check that one pin can influence another.
     """
@@ -193,9 +207,9 @@ class MockConnectedPin(SequentPin):
         return super()._change_state(value)
 
 
-class MockChargingPin(SequentPin):
+class MockChargingPin(MultiIOPin):
     """
-    This derivative of :class:`SequentPin` emulates a pin which, when set to
+    This derivative of :class:`MultiIOPin` emulates a pin which, when set to
     input, waits a predetermined length of time and then drives itself high
     (as if attached to, e.g. a typical circuit using an LDR and a capacitor
     to time the charging rate).
@@ -234,10 +248,10 @@ class MockChargingPin(SequentPin):
                 pass
 
 
-class MockTriggerPin(SequentPin):
+class MockTriggerPin(MultiIOPin):
     """
-    This derivative of :class:`SequentPin` is intended to be used with another
-    :class:`SequentPin` to emulate a distance sensor. Set *echo_pin* to the
+    This derivative of :class:`MultiIOPin` is intended to be used with another
+    :class:`MultiIOPin` to emulate a distance sensor. Set *echo_pin* to the
     corresponding pin instance. When this pin is driven high it will trigger
     the echo pin to drive high for the echo time.
     """
@@ -262,9 +276,9 @@ class MockTriggerPin(SequentPin):
         self.echo_pin.drive_low()
 
 
-class MockPWMPin(SequentPin):
+class MockPWMPin(MultiIOPin):
     """
-    This derivative of :class:`SequentPin` adds PWM support.
+    This derivative of :class:`MultiIOPin` adds PWM support.
     """
     def __init__(self, factory, info):
         super().__init__(factory, info)
@@ -292,9 +306,9 @@ class MockPWMPin(SequentPin):
             self._change_state(0.0)
 
 
-class MockSPIClockPin(SequentPin):
+class MockSPIClockPin(MultiIOPin):
     """
-    This derivative of :class:`SequentPin` is intended to be used as the clock pin
+    This derivative of :class:`MultiIOPin` is intended to be used as the clock pin
     of a mock SPI device. It is not intended for direct construction in tests;
     rather, construct a :class:`MockSPIDevice` with various pin numbers, and
     this class will be used for the clock pin.
@@ -309,9 +323,9 @@ class MockSPIClockPin(SequentPin):
             dev.on_clock()
 
 
-class MockSPISelectPin(SequentPin):
+class MockSPISelectPin(MultiIOPin):
     """
-    This derivative of :class:`SequentPin` is intended to be used as the select
+    This derivative of :class:`MultiIOPin` is intended to be used as the select
     pin of a mock SPI device. It is not intended for direct construction in
     tests; rather, construct a :class:`MockSPIDevice` with various pin numbers,
     and this class will be used for the select pin.
@@ -443,7 +457,7 @@ class MockSPIDevice:
         self.tx_buf.extend(bits)
 
 
-class SequentFactory(PiFactory):
+class MultiIOFactory(PiFactory):
     """
     Factory for generating mock pins.
 
@@ -457,11 +471,11 @@ class SequentFactory(PiFactory):
 
     .. attribute:: pin_class
 
-        This attribute stores the :class:`SequentPin` class (or descendant) that
+        This attribute stores the :class:`MultiIOPin` class (or descendant) that
         will be used when constructing pins with the :meth:`pin` method (if
         no *pin_class* parameter is used to override it). It defaults on
         construction to the value of the *pin_class* parameter in the
-        constructor, or :class:`SequentPin` if that is unspecified.
+        constructor, or :class:`MultiIOPin` if that is unspecified.
     """
     def __init__(self, revision=None, stack=0):
         super().__init__()
@@ -469,7 +483,69 @@ class SequentFactory(PiFactory):
             revision = os.environ.get('GPIOZERO_MOCK_REVISION', 'a02082')
         self._revision = int(revision, base=16)
         self.stack=stack
-        self.pin_class = SequentPin
+        self.pin_class = MultiIOPin
+
+    def _get_revision(self):
+        return self._revision 
+
+    def reset(self):
+        """
+        Clears the pins and reservations sets. This is primarily useful in
+        test suites to ensure the pin factory is back in a "clean" state before
+        the next set of tests are run.
+        """
+        self.pins.clear()
+        self._reservations.clear()
+
+    def pin(self, name, pin_class=None, **kwargs):
+        """
+        The pin method for :class:`MockFactory` additionally takes a
+        *pin_class* attribute which can be used to override the class'
+        :attr:`pin_class` attribute. Any additional keyword arguments will be
+        passed along to the pin constructor (useful with things like
+        :class:`MockConnectedPin` which expect to be constructed with another
+        pin).
+        """
+        if pin_class is None:
+            pin_class = self.pin_class
+        for header, info in self.board_info.find_pin(name):
+            try:
+                pin = self.pins[info]
+            except KeyError:
+                pin = pin_class(self, info, stack=self.stack, channel=name, **kwargs)
+                self.pins[info] = pin
+            else:
+                # Ensure the pin class expected supports PWM (or not)
+                if issubclass(pin_class, MockPWMPin) != isinstance(pin, MockPWMPin):
+                    raise ValueError(
+                        f'pin {info.name} is already in use as a '
+                        f'{pin.__class__.__name__}')
+            return pin
+        raise PinInvalidPin(f'{name} is not a valid pin name')
+
+    def _get_spi_class(self, shared, hardware):
+        return MockSPIInterfaceShared if shared else MockSPIInterface
+
+    @staticmethod
+    def ticks():
+        return monotonic()
+
+    @staticmethod
+    def ticks_diff(later, earlier):
+        return later - earlier
+
+class MegaindFactory(PiFactory):
+    """
+    Factory for generating mock pins.
+    Identicall to MultiIOFactory but for the Megaind library/board a
+    """
+    def __init__(self, revision=None, stack=0):
+        super().__init__()
+        if revision is None:
+            revision = os.environ.get('GPIOZERO_MOCK_REVISION', 'a02082')
+        self._revision = int(revision, base=16)
+        self.stack=stack
+        self.pin_class = MegaindPin
 
     def _get_revision(self):
         return self._revision 
