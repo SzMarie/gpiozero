@@ -465,11 +465,12 @@ class SequentFactory(PiFactory):
         super().__init__()
         if revision is None:
             revision = os.environ.get('GPIOZERO_MOCK_REVISION', 'a02082')
+        self._revision = int(revision, base=16)
         self.stack=stack
         self.pin_class = SequentPin
 
     def _get_revision(self):
-        self._revision = int(revision, base=16)
+        return self._revision 
 
     def reset(self):
         """
