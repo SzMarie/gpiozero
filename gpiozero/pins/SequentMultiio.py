@@ -469,7 +469,7 @@ class SequentFactory(PiFactory):
         self.pin_class = SequentPin
 
     def _get_revision(self):
-        return self._revision
+        self._revision = int(revision, base=16)
 
     def reset(self):
         """
