@@ -74,6 +74,7 @@ class SequentPin(PiPin):
         return self._state
 
     def _set_state(self, value):
+        print(f"LOG: _set_state appelé, channel={self._channel}, value={value}", flush=True)
         if self._function == 'input':
             raise PinSetInput(f'cannot set state of pin {self!r}')
         assert self._function == 'output'
