@@ -36,7 +36,6 @@ from ..devices import Device
 from ..mixins import SharedMixin
 from .pi import PiPin, PiFactory
 from .spi import SPISoftware
-se
 
 PinState = namedtuple('PinState', ('timestamp', 'state'))
 
