@@ -498,7 +498,7 @@ class SequentFactory(PiFactory):
             try:
                 pin = self.pins[info]
             except KeyError:
-                pin = pin_class(self, info, stack=self.stack, **kwargs)
+                pin = pin_class(self, info, stack=self.stack, channel=name, **kwargs)
                 self.pins[info] = pin
             else:
                 # Ensure the pin class expected supports PWM (or not)
