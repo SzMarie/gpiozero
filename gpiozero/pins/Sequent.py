@@ -596,9 +596,9 @@ class MultiIOFactory(PiFactory):
         return MockSPIInterfaceShared if shared else MockSPIInterface
 
     def relay(self, channel=1):
-        return MultiIORelay(stack=stack.self, channel=channel)
+        return MultiIORelay(stack=self.stack, channel=channel)
     def analog_in(self, channel=1):
-        return MultiIOAnalogInput(stack=stack.self, channel=channel)
+        return MultiIOAnalogInput(stack=self.stack, channel=channel)
 
     @staticmethod
     def ticks():
