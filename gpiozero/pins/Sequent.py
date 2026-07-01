@@ -595,6 +595,11 @@ class MultiIOFactory(PiFactory):
     def _get_spi_class(self, shared, hardware):
         return MockSPIInterfaceShared if shared else MockSPIInterface
 
+    def relay(self, channel=1):
+        return MultiIORelay(stack=stack.self, channel=channel)
+    def analog_in(self, channel=1):
+        return MultiIOAnalogInput(stack=stack.self, channel=channel)
+
     @staticmethod
     def ticks():
         return monotonic()
@@ -698,7 +703,6 @@ class MultiIORelay:
         self._card = SMmultiio(stack=stack)
         self._channel = channel
     def on(self):
-        print(f"LOG: set_relay({self._channel}, 1)", flush=True)
         self._card.set_relay(self._channel, 1)
     def off(self):
         self._card.set_relay(self._channel, 0)
