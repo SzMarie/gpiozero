@@ -39,6 +39,67 @@ from .spi import SPISoftware
 
 PinState = namedtuple('PinState', ('timestamp', 'state'))
 
+class MultiIOAnalogPin(PiPin):
+    """
+    Input pin that reads a 0-10V analog input on the Multi-IO HAT via I2C.
+    """
+    def __init__(self, factory, info, stack=0, channel=1):
+        super().__init__(factory, info)
+        self._stack = stack
+        self._channel = channel
+        self._function = 'input'
+        self._pull = info.pull or 'floating'
+        self._state = 0.0
+        self._bounce = None
+        self._edges = 'both'
+        self._when_changed = None
+        self.card = SMmultiio(stack=stack)
+        self.clear_states()
+
+    def clear_states(self):
+        self._last_change = monotonic()
+        self.states = [PinState(0.0, self._state)]
+
+    def _get_function(self):
+        return self._function
+
+    def _set_function(self, value):
+        if value != 'input':
+            raise PinInvalidFunction('MultiIOAnalogPin is input-only')
+        self._function = value
+
+    def _get_state(self):
+        return self.card.get_u_in(self._channel) / 10.0
+
+    def _set_state(self, value):
+        raise PinSetInput(f'MultiIOAnalogPin is read-only: {self!r}')
+
+    def _get_frequency(self):
+        return None
+
+    def _set_frequency(self, value):
+        if value is not None:
+            raise PinPWMUnsupported()
+
+    def _get_pull(self):
+        return self._pull
+
+    def _set_pull(self, value):
+        if value not in ('floating', 'up', 'down'):
+            raise PinInvalidPull('pull must be floating, up, or down')
+        self._pull = value
+
+    def _get_bounce(self):
+        return self._bounce
+
+    def _set_bounce(self, value):
+        self._bounce = value
+
+    def _get_edges(self):
+        return self._edges
+
+    def _set_edges(self, value):
+        self._edges = value
 
 class MultiIOPin(PiPin):
     """
@@ -477,13 +538,21 @@ class MultiIOFactory(PiFactory):
         construction to the value of the *pin_class* parameter in the
         constructor, or :class:`MultiIOPin` if that is unspecified.
     """
-    def __init__(self, revision=None, stack=0):
+    
+    PIN_TYPES = {
+        'relay':     MultiIOPin,
+        'analog_in': MultiIOAnalogPin,
+    }
+    
+    def __init__(self, revision=None, stack=0, pin_type='relay'):
         super().__init__()
         if revision is None:
             revision = os.environ.get('GPIOZERO_MOCK_REVISION', 'a02082')
         self._revision = int(revision, base=16)
         self.stack=stack
-        self.pin_class = MultiIOPin
+        if pin_type not in self.PIN_TYPES:
+            raise ValueError(f'pin_type inconnu: {pin_type}')
+        self.pin_class = self.PIN_TYPES[pin_type]
 
     def _get_revision(self):
         return self._revision 
