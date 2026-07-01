@@ -698,6 +698,7 @@ class MultiIORelay:
         self._card = SMmultiio(stack=stack)
         self._channel = channel
     def on(self):
+        print(f"LOG: set_relay({self._channel}, 1)", flush=True)
         self._card.set_relay(self._channel, 1)
     def off(self):
         self._card.set_relay(self._channel, 0)
