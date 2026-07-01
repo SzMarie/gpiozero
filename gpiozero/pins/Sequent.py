@@ -69,6 +69,7 @@ class MultiIOAnalogPin(PiPin):
         self._function = value
 
     def _get_state(self):
+        print(f'valeur: {self.card.get_u_in(self.channel)}')
         return self.card.get_u_in(self._channel) / 10.0
 
     def _set_state(self, value):
