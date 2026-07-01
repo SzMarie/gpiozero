@@ -675,3 +675,29 @@ class MockSPIInterfaceShared(SharedMixin, MockSPIInterface):
     def _shared_key(cls, clock_pin, mosi_pin, miso_pin, select_pin,
                     pin_factory):
         return (clock_pin, select_pin)
+
+class MultiIOAnalogInput:
+    """
+    Reads a 0-10V analog input from a Sequent Multi-IO HAT
+    """
+    def __init__(self, stack=0, channel=1):
+        self._card = SMmultiio(stack=stack)
+        self._channel = channel
+    @property
+    def value(self):
+        return self._card.get_u_in(self._channel) / 10.0
+    @property
+    def volts(self):
+        return self._card.get_u_in(self._channel)
+
+class MultiIORelay:
+    """
+    Controls a relay output on a Sequent Multi-IO HAT
+    """
+    def __init__(self, stack=0, channel=1):
+        self._card = SMmultiio(stack=stack)
+        self._channel = channel
+    def on(self):
+        self._card.set_relay(self._channel, 1)
+    def off(self):
+        self._card.set_relay(self._channel, 0)
