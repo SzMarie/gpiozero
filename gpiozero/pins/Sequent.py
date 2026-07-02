@@ -246,6 +246,7 @@ class MegaindPin(PiPin):
         self._function = 'input'
         self._pull = info.pull or 'floating'
         self._state = False
+        self._frequency = None
         self._bounce = None
         self._edges = 'both'
         self._when_changed = None
@@ -278,8 +279,12 @@ class MegaindPin(PiPin):
             raise PinSetInput(f'cannot set state of pin {self!r}')
         assert self._function == 'output'
         assert 0 <= value <= 1
-        self._change_state(bool(value))
-        megaind.setOd(self._stack, self._channel, 1 if value else 0)
+        if self._frequency is None:
+            self._change_state(bool(value))
+            megaind.setOd(self._stack, self._channel, 1 if value else 0)
+        else:
+            self._change_state(float(value))
+            megaind.setOdPWM(self._stack, self._channel, float(value) * 100)
         time.sleep(0.05)
 
     def _change_state(self, value):
@@ -292,11 +297,16 @@ class MegaindPin(PiPin):
         return False
 
     def _get_frequency(self):
-        return None
+        return self._frequency
 
     def _set_frequency(self, value):
-        if value is not None:
-            raise PinPWMUnsupported()
+        # The Megaind OD channels have a fixed-frequency hardware PWM
+        # generator; the requested Hz value can't be applied, it's only
+        # used here as an on/off switch between digital and PWM output.
+        self._frequency = value
+        if value is None:
+            self._change_state(False)
+            megaind.setOd(self._stack, self._channel, 0)
 
     def _get_pull(self):
         return self._pull
